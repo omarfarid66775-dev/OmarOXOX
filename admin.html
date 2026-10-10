@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>XO Admin Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<style>
+:root{--bg:#05060a;--card:#0d1018;--line:rgba(255,255,255,.08);--tx:#e8ecf5;--mut:#7d869a;--c1:#00f3ff;--c2:#bc13fe;--c3:#ff0055;--c4:#00ff66;--c5:#ffcc00}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg) radial-gradient(circle at 10% 0,rgba(157,0,255,.12),transparent 40%),radial-gradient(circle at 90% 100%,rgba(0,243,255,.08),transparent 40%);color:var(--tx);font-family:'Segoe UI',sans-serif;min-height:100vh}
+.hide{display:none!important}
+#login{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.box{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px;width:320px;text-align:center}
+.box h1{font-size:18px;letter-spacing:4px;margin:0 0 18px}
+input{width:100%;padding:12px 14px;margin:6px 0;background:#080a10;border:1px solid var(--line);border-radius:10px;color:#fff;font-size:14px}
+button{cursor:pointer;border:0;border-radius:10px;padding:12px 16px;font-weight:700;color:#fff;background:linear-gradient(90deg,var(--c2),var(--c3))}
+.box button{width:100%;margin-top:10px}
+#msg{color:#ff6b8a;font-size:12px;margin-top:10px;word-break:break-all}
+header{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(5,6,10,.9);backdrop-filter:blur(8px);z-index:5}
+header h1{font-size:16px;letter-spacing:4px;margin:0}
+header small{color:var(--mut);margin-left:10px;letter-spacing:0}
+header .act button{padding:8px 14px;font-size:12px;margin-left:6px}
+header .act .g{background:transparent;border:1px solid var(--line);color:var(--mut)}
+main{padding:22px 24px;max-width:1280px;margin:auto}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.k{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;position:relative;overflow:hidden}
+.k:before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--a,var(--c1))}
+.k span{font-size:11px;letter-spacing:2px;color:var(--mut);text-transform:uppercase}
+.k b{display:block;font-size:30px;margin-top:6px}
+.k i{font-style:normal;font-size:11px;color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-top:14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.panel h3{margin:0 0 12px;font-size:12px;letter-spacing:2px;color:var(--mut);text-transform:uppercase}
+.panel canvas{max-height:260px}
+.wide{grid-column:1/-1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:var(--mut);font-size:11px;letter-spacing:1px;text-align:left;padding:8px;border-bottom:1px solid var(--line);text-transform:uppercase}
+td{padding:9px 8px;border-bottom:1px solid var(--line)}
+.tbl{overflow-x:auto}
+.pill{padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="box">
+    <h1>XO ADMIN</h1>
+    <input id="u" placeholder="Admin username" autocomplete="username">
+    <input id="p" type="password" placeholder="Password" autocomplete="current-password">
+    <button id="go">SIGN IN</button>
+    <div id="msg"></div>
+  </div>
+</div>
+
+<div id="app" class="hide">
+  <header>
+    <h1>ULTIMATE XO <small id="upd"></small></h1>
+    <div class="act"><button id="ref">Refresh</button><button class="g" id="out">Sign out</button></div>
+  </header>
+  <main>
+    <div class="kpis" id="kpis"></div>
+    <div class="grid">
+      <div class="panel wide"><h3>New accounts · last 30 days</h3><canvas id="cSign"></canvas></div>
+      <div class="panel wide"><h3>Active players per day (logins) · last 30 days</h3><canvas id="cAct"></canvas></div>
+      <div class="panel"><h3>Games by mode</h3><canvas id="cMode"></canvas></div>
+      <div class="panel"><h3>Results (W / D / L)</h3><canvas id="cWdl"></canvas></div>
+      <div class="panel"><h3>Players by league division</h3><canvas id="cDiv"></canvas></div>
+      <div class="panel"><h3>Games played per day (recent matches)</h3><canvas id="cGames"></canvas></div>
+      <div class="panel wide"><h3>Projector shop · owners per projector</h3><div style="position:relative;height:640px"><canvas id="cShop" style="max-height:none"></canvas></div></div>
+      <div class="panel wide"><h3>Top 10 players</h3><div class="tbl" id="top"></div></div>
+      <div class="panel wide"><h3>Latest sign-ups</h3><div class="tbl" id="recent"></div></div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ====== SETTINGS ====== */
+var ADMIN_EMAIL = "xo_admin_omar@xo.game";   // the admin account (username: xo_admin_omar)
+var CFG = { apiKey:"AIzaSyCtDlSEnVV26SryyLZmzBlWxu0uA4IPiUE", authDomain:"omarfarid-1af0c.firebaseapp.com",
+  databaseURL:"https://omarfarid-1af0c-default-rtdb.firebaseio.com", projectId:"omarfarid-1af0c",
+  storageBucket:"omarfarid-1af0c.firebasestorage.app", messagingSenderId:"1026936277627",
+  appId:"1:1026936277627:web:30e2ed7b571cf96952b0de" };
+var DIVS = {10:["Iron","#888"],9:["Bronze","#cd7f32"],8:["Silver","#ccc"],7:["Gold","#fc0"],6:["Platinum","#0cf"],5:["Emerald","#0f9"],4:["Diamond","#00f3ff"],3:["Elite","#bc13fe"],2:["Master","#f80"],1:["Legend","#f24"]};
+var PNAME = {violet:"Violet Nebula",ocean:"Ocean Nebula",ember:"Ember Nebula",moon:"Full Moon",aurora:"Aurora",galaxy:"Spiral Galaxy",mint:"Mint Haze",crimson:"Crimson Haze",snow:"Snow Static",gold:"Golden Dust",xocyan:"XO Rain",xofire:"XO Inferno",toxic:"Toxic Aurora",rose:"Rose Aurora",synthp:"Synthwave Sunset",synthc:"Cyber Sunrise",portalv:"Violet Portal",portalg:"Matrix Portal",portalr:"Hellgate",chroma:"Chroma XO",prism:"Prism Nebula",snowfall:"Snowfall",rain:"Neon Rain",flies:"Firefly Night",day:"Sunny Day",lava:"Lava Lamp",reef:"Neon Reef",jelly:"Jellyfish Deep"};
+var MODES = {ai:"VS AI",online:"Online",local:"Local 2P",mystery:"Mystery",tt:"Tic-Tac-Toe+",tot:"Ultimate",league:"League",other:"Other"};
+
+var $ = function(i){ return document.getElementById(i); };
+var app = firebase.initializeApp(CFG, "xoAdmin"), auth = app.auth(), db = app.database();
+var charts = {};
+function esc(t){ return String(t==null?"":t).replace(/[<>&"]/g,""); }
+function J(s){ try { return JSON.parse(s||"{}") || {}; } catch(e){ return {}; } }
+function dkey(ts){ return new Date(ts).toISOString().slice(0,10); }
+function lastDays(n){ var a=[], t=Date.now(); for (var i=n-1;i>=0;i--) a.push(dkey(t-i*864e5)); return a; }
+function ago(ts){ if(!ts) return "-"; var m=(Date.now()-ts)/6e4; return m<60?Math.round(m)+"m ago":m<1440?Math.round(m/60)+"h ago":Math.round(m/1440)+"d ago"; }
+
+$("go").onclick = function(){
+  $("msg").textContent = "";
+  auth.signInWithEmailAndPassword($("u").value.trim().toLowerCase()+"@xo.game", $("p").value)
+    .catch(function(e){ $("msg").textContent = "Login failed: " + (e.code||e.message); });
+};
+$("p").onkeydown = function(e){ if (e.key==="Enter") $("go").click(); };
+$("out").onclick = function(){ auth.signOut(); };
+$("ref").onclick = load;
+auth.onAuthStateChanged(function(u){
+  if (!u) { $("login").classList.remove("hide"); $("app").classList.add("hide"); return; }
+  if (u.email !== ADMIN_EMAIL) {
+    $("msg").textContent = "This account is not the admin account.";
+    auth.signOut(); return;
+  }
+  $("login").classList.add("hide"); $("app").classList.remove("hide"); load();
+});
+setInterval(function(){ if (auth.currentUser) load(); }, 60000);
+
+function load(){
+  Promise.all([ db.ref("users").once("value"),
+                db.ref("activity").orderByKey().limitToLast(30).once("value").catch(function(){ return null; }) ])
+  .then(function(r){ render(r[0].val()||{}, r[1] && r[1].val() || {}); $("upd").textContent = "updated " + new Date().toLocaleTimeString(); })
+  .catch(function(e){ alert("Could not read data: "+(e.code||e.message)+"\nCheck the database rules (see database.rules-snippet.json)."); });
+}
+
+function render(users, act){
+  var days = lastDays(30), today = days[29], week = days.slice(23);
+  var P = Object.keys(users).map(function(uid){
+    var u = users[uid], p = u.profile||{}, sv = u.save||{}, st = J(sv.xo_stats), lg = J(sv.xo_league_v2);
+    return { uid:uid, name:p.name||"Player", tag:p.tag||"-----", created:p.created||0, last:p.last||0, logins:p.logins||0, st:st, lg:lg,
+             games:(st.w||0)+(st.d||0)+(st.l||0)+(st.p||0), shop:st.shop||{} };
+  });
+  var signs = {}, wk = {}, gday = {}, modes = {}, divs = {}, W=0, D=0, L=0, G=0;
+  P.forEach(function(p){
+    if (p.created) signs[dkey(p.created)] = (signs[dkey(p.created)]||0)+1;
+    W+=p.st.w||0; D+=p.st.d||0; L+=p.st.l||0; G+=p.games;
+    Object.keys(p.st.m||{}).forEach(function(m){ var o=p.st.m[m]; modes[m]=(modes[m]||0)+(o.w||0)+(o.d||0)+(o.l||0)+(o.p||0); });
+    (p.st.h||[]).forEach(function(h){ if (h[2]) gday[dkey(h[2])] = (gday[dkey(h[2])]||0)+1; });
+    var dv = p.lg.divId; if (dv) divs[dv] = (divs[dv]||0)+1;
+  });
+  /* activity: use the "activity" log when it exists, otherwise fall back to last-seen */
+  var actDay = {}, wkSet = {};
+  days.forEach(function(d){ actDay[d] = act[d] ? Object.keys(act[d]).length : 0; });
+  week.forEach(function(d){ Object.keys(act[d]||{}).forEach(function(u){ wkSet[u]=1; }); });
+  if (!Object.keys(act).length) { P.forEach(function(p){ if (p.last){ var d=dkey(p.last); if (actDay[d]!=null) actDay[d]++; if (week.indexOf(d)>-1) wkSet[p.uid]=1; } }); }
+  var coinsAll = 0, buyers = 0, owned = {};
+  P.forEach(function(p){ var sh = p.shop; coinsAll += sh.c||0; if ((sh.o||[]).length) buyers++; (sh.o||[]).forEach(function(i){ owned[i]=(owned[i]||0)+1; }); });
+  var total = P.length, new7 = week.reduce(function(a,d){ return a+(signs[d]||0); },0);
+  var returned = P.filter(function(p){ return p.last && p.created && p.last-p.created > 864e5; }).length;
+  var played = P.filter(function(p){ return p.games>0; }).length;
+
+  var K = [
+    ["Total accounts", total, "all time", "--c1"],
+    ["New today", signs[today]||0, new7+" in last 7 days", "--c4"],
+    ["Active today", actDay[today]||0, Object.keys(wkSet).length+" active in 7 days", "--c2"],
+    ["Total games", G, total ? (G/total).toFixed(1)+" per player" : "-", "--c3"],
+    ["Win rate", (W+D+L) ? Math.round(W/(W+D+L)*100)+"%" : "-", W+"W · "+D+"D · "+L+"L", "--c5"],
+    ["Returning players", total ? Math.round(returned/total*100)+"%" : "-", "came back after day 1", "--c1"],
+    ["Coins held by players", coinsAll, total ? Math.round(coinsAll/total)+" per player" : "-", "--c5"],
+    ["Shop buyers", total ? Math.round(buyers/total*100)+"%" : "-", buyers+" bought a projector", "--c3"],
+    ["Players who played", total ? Math.round(played/total*100)+"%" : "-", played+" of "+total, "--c4"]
+  ];
+  $("kpis").innerHTML = K.map(function(k){ return "<div class='k' style='--a:var("+k[3]+")'><span>"+k[0]+"</span><b>"+k[1]+"</b><i>"+k[2]+"</i></div>"; }).join("");
+
+  var short = days.map(function(d){ return d.slice(5); });
+  draw("cSign","bar",short,[{data:days.map(function(d){return signs[d]||0;}),backgroundColor:"#00f3ff"}]);
+  draw("cAct","line",short,[{data:days.map(function(d){return actDay[d];}),borderColor:"#bc13fe",backgroundColor:"rgba(188,19,254,.15)",fill:true,tension:.35}]);
+  draw("cGames","bar",short,[{data:days.map(function(d){return gday[d]||0;}),backgroundColor:"#ff0055"}]);
+  var mk = Object.keys(modes);
+  draw("cMode","doughnut",mk.map(function(m){return MODES[m]||m;}),[{data:mk.map(function(m){return modes[m];}),backgroundColor:["#00f3ff","#bc13fe","#ff0055","#00ff66","#ffcc00","#ff8800","#7d869a"],borderWidth:0}]);
+  draw("cWdl","doughnut",["Wins","Draws","Losses"],[{data:[W,D,L],backgroundColor:["#00ff66","#ffcc00","#ff0055"],borderWidth:0}]);
+  var dk = [10,9,8,7,6,5,4,3,2,1];
+  draw("cDiv","bar",dk.map(function(i){return DIVS[i][0];}),[{data:dk.map(function(i){return divs[i]||0;}),backgroundColor:dk.map(function(i){return DIVS[i][1];})}]);
+
+  var ok = Object.keys(PNAME).sort(function(a,b){ return (owned[b]||0)-(owned[a]||0); });
+  draw("cShop","bar",ok.map(function(i){return PNAME[i];}),[{data:ok.map(function(i){return owned[i]||0;}),backgroundColor:"#ffcc00"}]);
+  var top = P.filter(function(p){ return p.lg.divId; }).sort(function(a,b){
+    return (a.lg.divId-b.lg.divId) || ((b.lg.pts||0)-(a.lg.pts||0)); }).slice(0,10);
+  $("top").innerHTML = table(["#","Player","Division","Pts","Best streak","W","D","L"], top.map(function(p,i){
+    var d = DIVS[p.lg.divId]||["?","#888"];
+    return [i+1, esc(p.name)+" <small style='color:#7d869a'>#"+esc(p.tag)+"</small>", "<span class='pill' style='color:"+d[1]+";border-color:"+d[1]+"'>"+d[0]+"</span>",
+            p.lg.pts||0, p.lg.bestStreak||0, p.lg.wins||0, p.lg.draws||0, p.lg.losses||0];
+  }));
+  var rec = P.slice().sort(function(a,b){ return b.created-a.created; }).slice(0,12);
+  $("recent").innerHTML = table(["Player","Joined","Last seen","Logins","Games"], rec.map(function(p){
+    return [esc(p.name)+" <small style='color:#7d869a'>#"+esc(p.tag)+"</small>", p.created ? new Date(p.created).toLocaleDateString() : "-", ago(p.last), p.logins||"-", p.games];
+  }));
+}
+function table(h, rows){
+  return "<table><tr>"+h.map(function(x){return "<th>"+x+"</th>";}).join("")+"</tr>"+
+    rows.map(function(r){ return "<tr>"+r.map(function(c){return "<td>"+c+"</td>";}).join("")+"</tr>"; }).join("")+"</table>";
+}
+function draw(id, type, labels, ds){
+  if (charts[id]) charts[id].destroy();
+  var pie = type==="doughnut";
+  charts[id] = new Chart($(id), { type:type, data:{ labels:labels, datasets:ds },
+    options:{ responsive:true, maintainAspectRatio:(id!=="cShop"), indexAxis:(id==="cShop"?"y":"x"), plugins:{ legend:{ display:pie, position:"bottom", labels:{ color:"#9aa3b8" } } },
+      scales: pie ? {} : { x:{ ticks:{ color:"#7d869a", maxRotation:0, autoSkip:true }, grid:{ display:false } },
+                          y:{ beginAtZero:true, ticks:{ color:"#7d869a", precision:0 }, grid:{ color:"rgba(255,255,255,.05)" } } } } });
+}
+</script>
+</body>
+  </html>
